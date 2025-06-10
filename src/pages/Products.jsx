@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -18,49 +17,47 @@ import {
   FormControl, // <-- Import FormControl
   InputLabel, // <-- Import InputLabel
 } from '@mui/material';
+
 import DeleteIcon from '@mui/icons-material/Delete';
+
 import axios from 'axios';
+
 import { CheckCircleOutline } from '@mui/icons-material';
+import { useEffect, useState } from 'react';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
   const [isAdded, setIsAdded] = useState(false);
-  const [categories, setCategories] = useState([]); // To store fetched categories
+  const [categories, setCategories] = useState([]);
   const [newProduct, setNewProduct] = useState({
     title: '',
     description: '',
-    category: '', // This will now hold the selected category name (or ID)
+    category: '',
     price: '',
     availableSizes: '',
     color: '',
     images: '',
-    stock: '',
+    stock: '', // Input will be "S:10, M:20, L:15"
   });
 
   useEffect(() => {
     fetchProducts();
-    fetchCategories(); // Make sure to call the function
+    fetchCategories();
   }, []);
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/categories'); // Ensure this is your correct API endpoint for categories
-      // Assuming the response.data is an array of category objects like [{_id: '1', name: 'Electronics', products: [...]}, ...]
-      // Or if it's directly an array of {name: 'Category 1', products: []} from your earlier NestJS setup
+      const response = await axios.get('https://backend-da-clothing.vercel.app/api/categories');
       setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
-      setCategories([]); // Set to empty array on error to prevent map issues
+      setCategories([]);
     }
   };
 
   const fetchProducts = async () => {
     try {
-      // Make sure your backend API endpoint for fetching all products is correct.
-      // Based on your previous NestJS setup, it might be just '/products'
-      // or if you want products grouped by categories, the '/categories' endpoint does that.
-      // For a simple product list, let's assume you have a '/products' endpoint.
-      const response = await axios.get('http://localhost:3000/api/products'); // Adjust if your product endpoint is different
+      const response = await axios.get('https://backend-da-clothing.vercel.app/api/products');
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -69,42 +66,43 @@ const Products = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Ensure category is selected
     if (!newProduct.category) {
-      alert('Please select a category.'); // Or use a more sophisticated notification
+      alert('Please select a category.');
       return;
     }
     try {
+      // 1. Create the inner SizeStockDto object from the input string
+      const sizeStock = Object.fromEntries(
+        newProduct.stock.split(',').map((item) => {
+          const [size, quantity] = item.split(':').map((s) => s.trim());
+          return [size.toUpperCase(), parseInt(quantity, 10) || 0]; // Ensure quantity is a number
+        })
+      );
+
+      // 2. Construct the full payload matching the DTO structure
       const productData = {
-        id: String(Date.now()), // Or let the backend generate it
+        id: String(Date.now()),
         title: newProduct.title,
         description: newProduct.description,
-        category: newProduct.category, // This is the category name
+        category: newProduct.category,
         price: parseFloat(newProduct.price),
         availableSizes: newProduct.availableSizes.split(',').map((size) => size.trim()),
         variants: [
           {
             color: newProduct.color,
             images: newProduct.images.split(',').map((url) => url.trim()),
-            // Your backend expects stock as a Map or an object for each variant,
-            // current structure: stock: { stock: { S: 10, M: 20 } }
-            // Backend Schema (Product -> variants -> stock: Map<string, number>)
-            // So the stock should be directly the object {S:10, M:20}
-            stock: Object.fromEntries(
-              newProduct.stock.split(',').map((item) => {
-                const [size, quantity] = item.split(':').map((s) => s.trim());
-                return [size, parseInt(quantity, 10)];
-              })
-            ),
+            // This now exactly matches the nested DTO structure:
+            // VariantDto -> stock: StockDto -> stock: SizeStockDto
+            stock: {
+              // This object is the StockDto
+              stock: sizeStock, // This nested object is the SizeStockDto
+            },
           },
         ],
-        // Add other fields like brand, gender, material, etc., if your backend needs them.
-        // The example uses a simple structure for the product form.
       };
 
-      // Use the correct endpoint for adding a product.
-      // Based on your NestJS setup, it should be POST /products
-      await axios.post('http://localhost:3000/products', productData);
+      await axios.post('https://backend-da-clothing.vercel.app/api/products', productData);
+
       setNewProduct({
         title: '',
         description: '',
@@ -117,23 +115,18 @@ const Products = () => {
       });
       setIsAdded(true);
       setTimeout(() => setIsAdded(false), 3000);
-      fetchProducts(); // Refresh the product list
+      fetchProducts();
     } catch (error) {
       console.error(
         'Error creating product:',
         error.response ? error.response.data : error.message
       );
-      // Optionally show an error alert to the user
     }
   };
 
   const handleDelete = async (productId) => {
-    // productId could be the custom 'id' or MongoDB '_id'
     try {
-      // Adjust the endpoint if your NestJS delete uses the custom 'id' field.
-      // Your NestJS `ProductsController` has `GET /products/:productId` where productId is the custom ID.
-      // Assuming you have a similar `DELETE /products/:productId` endpoint.
-      await axios.delete(`http://localhost:3000/products/${productId}`);
+      await axios.delete(`https://backend-da-clothing.vercel.app/api/products/${productId}`);
       fetchProducts();
     } catch (error) {
       console.error('Error deleting product:', error);
@@ -146,7 +139,7 @@ const Products = () => {
         <Alert
           icon={<CheckCircleOutline fontSize="inherit" />}
           severity="success"
-          onClose={() => setIsAdded(false)} // Allow closing the alert
+          onClose={() => setIsAdded(false)}
           sx={{
             position: 'fixed',
             top: 20,
@@ -183,7 +176,6 @@ const Products = () => {
                 required
                 fullWidth
               />
-              {/* Category Dropdown */}
               <FormControl fullWidth required>
                 <InputLabel id="category-select-label">Category</InputLabel>
                 <Select
@@ -198,9 +190,6 @@ const Products = () => {
                   </MenuItem>
                   {categories.length > 0 ? (
                     categories.map((cat) => (
-                      // Assuming cat object has a 'name' property for display
-                      // and you want to send the name as the value.
-                      // If your backend expects category ID, use cat._id (or similar) as value.
                       <MenuItem key={cat._id || cat.name} value={cat.name}>
                         {cat.name}
                       </MenuItem>
@@ -217,15 +206,15 @@ const Products = () => {
                 value={newProduct.description}
                 onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
                 multiline
-                rows={3} // Increased rows for better UX
+                rows={3}
                 required
                 fullWidth
-                sx={{ gridColumn: { xs: '1 / -1', sm: '1 / -1' } }} // Span full width on small screens too
+                sx={{ gridColumn: '1 / -1' }}
               />
               <TextField
                 label="Price"
                 type="number"
-                inputProps={{ step: '0.01' }} // For decimal prices
+                inputProps={{ step: '0.01' }}
                 value={newProduct.price}
                 onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
                 required
@@ -265,8 +254,6 @@ const Products = () => {
               />
             </Box>
             <Button type="submit" variant="contained" sx={{ mt: 3, py: 1.5 }}>
-              {' '}
-              {/* Increased padding */}
               Add Product
             </Button>
           </form>
@@ -279,8 +266,6 @@ const Products = () => {
           <Table sx={{ minWidth: 650 }} aria-label="simple table">
             <TableHead>
               <TableRow sx={{ backgroundColor: (theme) => theme.palette.grey[200] }}>
-                {' '}
-                {/* Header background */}
                 <TableCell sx={{ fontWeight: 'bold' }}>Title</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Category</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Image</TableCell>
@@ -297,7 +282,7 @@ const Products = () => {
               {products.length > 0 ? (
                 products.map((product) => (
                   <TableRow
-                    key={product.id || product._id} // Use MongoDB _id if available, fallback to custom id
+                    key={product.id || product._id}
                     sx={{
                       '&:last-child td, &:last-child th': { border: 0 },
                       '&:hover': { backgroundColor: (theme) => theme.palette.action.hover },
@@ -307,6 +292,15 @@ const Products = () => {
                       {product.title}
                     </TableCell>
                     <TableCell>{product.category}</TableCell>
+                    <TableCell>
+                      <img
+                        alt={product?.title}
+                        src={product?.variants[0]?.images[0]}
+                        width="100"
+                        height="100"
+                        style={{ objectFit: 'cover' }}
+                      />
+                    </TableCell>
                     <TableCell align="right">${parseFloat(product.price).toFixed(2)}</TableCell>
                     <TableCell>
                       {Array.isArray(product.availableSizes)
@@ -315,7 +309,7 @@ const Products = () => {
                     </TableCell>
                     <TableCell align="center">
                       <IconButton
-                        onClick={() => handleDelete(product.id || product._id)} // Use the correct ID for deletion
+                        onClick={() => handleDelete(product.id || product._id)}
                         color="error"
                         aria-label="delete product"
                       >
@@ -326,7 +320,7 @@ const Products = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={6} align="center">
                     No products found.
                   </TableCell>
                 </TableRow>

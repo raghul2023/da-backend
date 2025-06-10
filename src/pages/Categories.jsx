@@ -26,7 +26,7 @@ const Categories = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/categories');
+      const response = await axios.get('https://backend-da-clothing.vercel.app/api/categories');
       setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -36,7 +36,9 @@ const Categories = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:3000/api/categories', { name: newCategory });
+      await axios.post('https://backend-da-clothing.vercel.app/api/categories', {
+        name: newCategory,
+      });
       setNewCategory('');
       fetchCategories();
     } catch (error) {
@@ -46,7 +48,7 @@ const Categories = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:3000/api/categories/${id}`);
+      await axios.delete(`https://backend-da-clothing.vercel.app/api/categories/${id}`);
       fetchCategories();
     } catch (error) {
       console.error('Error deleting category:', error);
