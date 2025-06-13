@@ -29,6 +29,8 @@ const Products = () => {
   const [products, setProducts] = useState([]);
   const [isAdded, setIsAdded] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [images, setImages] = useState([]);
+  const [imageArr, setImageArr] = useState([]);
   const [newProduct, setNewProduct] = useState({
     title: '',
     description: '',
@@ -44,7 +46,39 @@ const Products = () => {
     fetchProducts();
     fetchCategories();
   }, []);
-
+  async function handleImageUpload(e) {
+    const files = Array.from(e.target.files);
+    console.log(files);
+    if (files.length > 0) {
+      setImages((prevImages) => [...prevImages, ...files]);
+      const promiseArr = files.map(async (image) => {
+        const formData = new FormData();
+        formData.append('image', image);
+        const res = await fetch(
+          'https://api.imgbb.com/1/upload?&key=f3145a10e034400f4b912f8123f851b1',
+          {
+            method: 'POST',
+            body: formData,
+          }
+        );
+        console.log(res);
+        const data = await res.json();
+        console.log(data);
+        if (data) {
+          const { display_url } = data.data;
+          console.log('display', display_url);
+          return display_url;
+        }
+      });
+      try {
+        const urls = await Promise.all(promiseArr);
+        setImageArr(urls);
+        console.log('url', urls);
+      } catch (err) {
+        console.log('error', err);
+      }
+    }
+  }
   const fetchCategories = async () => {
     try {
       const response = await axios.get('https://backend-da-clothing.vercel.app/api/categories');
@@ -63,7 +97,6 @@ const Products = () => {
       console.error('Error fetching products:', error);
     }
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newProduct.category) {
@@ -90,7 +123,7 @@ const Products = () => {
         variants: [
           {
             color: newProduct.color,
-            images: newProduct.images.split(',').map((url) => url.trim()),
+            images: imageArr,
             // This now exactly matches the nested DTO structure:
             // VariantDto -> stock: StockDto -> stock: SizeStockDto
             stock: {
@@ -173,10 +206,9 @@ const Products = () => {
                 label="Title"
                 value={newProduct.title}
                 onChange={(e) => setNewProduct({ ...newProduct, title: e.target.value })}
-                required
                 fullWidth
               />
-              <FormControl fullWidth required>
+              <FormControl fullWidth>
                 <InputLabel id="category-select-label">Category</InputLabel>
                 <Select
                   labelId="category-select-label"
@@ -207,7 +239,6 @@ const Products = () => {
                 onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
                 multiline
                 rows={3}
-                required
                 fullWidth
                 sx={{ gridColumn: '1 / -1' }}
               />
@@ -217,14 +248,12 @@ const Products = () => {
                 inputProps={{ step: '0.01' }}
                 value={newProduct.price}
                 onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                required
                 fullWidth
               />
               <TextField
                 label="Available Sizes (comma-separated)"
                 value={newProduct.availableSizes}
                 onChange={(e) => setNewProduct({ ...newProduct, availableSizes: e.target.value })}
-                required
                 fullWidth
                 helperText="e.g., S, M, L, XL"
               />
@@ -232,26 +261,24 @@ const Products = () => {
                 label="Variant Color"
                 value={newProduct.color}
                 onChange={(e) => setNewProduct({ ...newProduct, color: e.target.value })}
-                required
                 fullWidth
                 helperText="e.g., Blue"
               />
-              <TextField
+              <input type="file" multiple onChange={handleImageUpload} />
+              {/* <TextField
                 label="Variant Images (comma-separated URLs)"
                 value={newProduct.images}
                 onChange={(e) => setNewProduct({ ...newProduct, images: e.target.value })}
-                required
                 fullWidth
                 helperText="e.g., url1.jpg, url2.jpg"
-              />
-              <TextField
+              /> */}
+              {/* <TextField
                 label="Variant Stock (Size:Qty, e.g. S:10,M:5)"
                 value={newProduct.stock}
                 onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                required
                 fullWidth
                 helperText="e.g., S:10,M:20,L:15"
-              />
+              /> */}
             </Box>
             <Button type="submit" variant="contained" sx={{ mt: 3, py: 1.5 }}>
               Add Product
