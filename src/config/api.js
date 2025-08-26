@@ -1,11 +1,11 @@
 // API Configuration
 const API_CONFIGS = {
   development: {
-    baseURL: 'http://localhost:3000/api',
+    baseURL: 'https://stile-backend-git-fork-raghul2023-fix-midhuns-projects-70ac7ee3.vercel.app/api',
     timeout: 10000,
   },
   production: {
-    baseURL: 'https://backend-da-clothing.vercel.app/api',
+    baseURL: 'https://stile-backend-git-fork-raghul2023-fix-midhuns-projects-70ac7ee3.vercel.app/api',
     timeout: 15000,
   }
 };
